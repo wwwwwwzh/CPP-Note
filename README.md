@@ -173,14 +173,12 @@ Global constants are stored in Text,const section. Const keyword doesn't affect 
 
 ### Where Every Type Of Data/Variable is Stored
 
-:::note
-Basically, `static` keyword move variables to TEXT/DATA segment instead of stack/heap. Unmodifiable/unchanged things go to TEXT/Data,const section. This is usually indicated by `const` keyword. Uninitialized global static variables go to bss section. Other global variables go to DATA section.
-:::
+> **Note**
+> Basically, `static` keyword move variables to TEXT/DATA segment instead of stack/heap. Unmodifiable/unchanged things go to TEXT/Data,const section. This is usually indicated by `const` keyword. Uninitialized global static variables go to bss section. Other global variables go to DATA section.
 
-:::note
-Compiler manages where variable goes by using assembler directives. This is an example of how assembly is NOT equivalent to machine code. Not all directives will be projected to a change in machine code as some are used by assembler like variable names and syntactic sugars are consumed by compiler. e.g.
+> **Note**
+> Compiler manages where variable goes by using assembler directives. This is an example of how assembly is NOT equivalent to machine code. Not all directives will be projected to a change in machine code as some are used by assembler like variable names and syntactic sugars are consumed by compiler. e.g.
 > The .globl directive only declares the symbol to be global in scope, it does not define the symbol
-:::
 
 ```c
 struct Person
@@ -454,7 +452,8 @@ Just an array with 0 ('\0') at the end.
 
 # Other 
 ## The Heap
-![heap you lock keep key.png](https://boostnote.io/api/teams/wE89btYff/files/8ff1fa51a1271fd232131337dda45dc80a50051a8e202d7ddf0d7232f9888430-heap%20you%20lock%20keep%20key.png)
+![heap you lock keep key.png]
+(https://user-images.githubusercontent.com/36484215/190881940-3c891f7e-cc05-4059-bd37-93e4edd8e433.png)
 
 ## Macro
 ### Overview
@@ -517,7 +516,7 @@ Rules:
 3. third part is input starting with :
 4. you can use %0-9 to refer to registers from input/output, output is by default %0
 
-![Screen Shot 2022-05-22 at 9.09.48 AM.png](https://boostnote.io/api/teams/wE89btYff/files/fd0b38dd3d084388f6012c29b306ec5bc54b69398c8ccb9ce19ae634c976f081-Screen%20Shot%202022-05-22%20at%209.09.48%20AM.png)
+![Screen Shot 2022-05-22 at 9.09.48 AM.png](https://user-images.githubusercontent.com/36484215/190881958-11e225f7-04ae-4142-9a35-46a068ccd683.png)
 
 
 ### Call C and ASM Function In ASM and C File
