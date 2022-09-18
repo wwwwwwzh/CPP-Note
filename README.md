@@ -1,6 +1,5 @@
+C/C++ note on basically everything you need to know. All explained with assembly.
 
-
-http://web.mit.edu/tibbetts/Public/inside-c/www/
 
 > **Note**
 > Stored in a pointer means the direct value (address) stored in memory marked by the pointer variable. 
@@ -8,6 +7,7 @@ http://web.mit.edu/tibbetts/Public/inside-c/www/
 
 
 # Basics
+http://web.mit.edu/tibbetts/Public/inside-c/www/
 ## #Include Command
 ### Overview
 Include is as simple as copy pasting what is included to the location where it appears. For example, including a <stdio.h> file at the beginning of program is equivalent of copying the whole stdio.h file to the first line. 
