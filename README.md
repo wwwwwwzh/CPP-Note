@@ -452,8 +452,7 @@ Just an array with 0 ('\0') at the end.
 
 # Other 
 ## The Heap
-![heap you lock keep key.png]
-(https://user-images.githubusercontent.com/36484215/190881940-3c891f7e-cc05-4059-bd37-93e4edd8e433.png)
+![heap you lock keep key.png](https://user-images.githubusercontent.com/36484215/190881940-3c891f7e-cc05-4059-bd37-93e4edd8e433.png)
 
 ## Macro
 ### Overview
@@ -521,3 +520,728 @@ Rules:
 
 ### Call C and ASM Function In ASM and C File
 Calling c function in asm or vice versa is easy. Just remember it’s all machine code at the end. Call c in asm is just calling the right mangled symbol and call asm in c is just normal function calling, it will be translated to asm later on.
+
+
+[[toc]]
+
+
+# Class & Struct
+:::tip
+`clang -cc1 -std=c++11 -fdump-record-layouts your-file.cpp` will create a list of all objects' properties
+:::
+
+## Overview
+
+``` c
+struct Person
+{
+    int m_age = 0;
+    int m_id = 0;
+
+    void greet()
+    {
+        cout << (*this).m_age << " " << (*this).m_id << endl;
+    }
+};
+
+int main(int argc, char const *argv[])
+{
+    //Reference type
+    int array[] = {1, 2, 3};
+    int(&a)[3] = array;
+    int *const &b = array;
+
+    printf("address of the variable 'array': %p\n", array); //0x7ffeee9bf2ac
+    printf("address of the content stored in 'array': %p\n", &array[0]); //0x7ffeee9bf2ac
+
+    //Objects
+    Person personOnStack;
+    personOnStack.greet();
+
+    printf("address of the variable 'personOnStack': %p\n", &personOnStack); //0x7ffeee9bf278
+
+    Person *personOnHeap = new Person();
+    personOnHeap->greet();
+
+    printf("address of the variable 'personOnHeap': %p\n", &personOnHeap); //0x7ffeee9bf270
+    printf("things stored in pointer 'personOnHeap' (address): %p\n", personOnHeap); //0x7f89dc405cc0
+    printf("address of the actual 'personOnHeap': %p\n", &personOnHeap->age); //0x7f89dc405cc0
+    return 0;
+}
+```
+
+## Creating / Deleting Memory 
+- malloc/calloc/realloc \ free 
+- new \ delete
+- new [] \ delete []
+
+:::note
+new will allocate on heap and return a pointer while `Class class` will allocate on stack. Both will call init method.
+:::
+
+### Array Initialization
+![Screen Shot 2021-11-09 at 3.00.17 PM.png](https://boostnote.io/api/teams/wE89btYff/files/96bb9c87595545258dc20b51f074ebf05d4dc8208858347fefeef29ac72fbf70-Screen%20Shot%202021-11-09%20at%203.00.17%20PM.png)
+
+
+## Nature of struct/class
+
+``` cpp
+struct Person
+{
+    int age;
+    int id;
+    int height;
+
+    void display()
+    {
+        cout << this->age << this->id << this->height << endl;
+    }
+};
+
+int main(int argc, char const *argv[])
+{
+    int a = 100;
+    Person person = {10, 20, 30};
+    Person *p = (Person *)&person.id;
+    person.display(); // 102030
+    p->display();     // 2030100
+
+    return 0;
+}
+```
+The type Person is just like any other types to help compiler know how much space should be used and to ensure safety measures.
+
+### This
+This is passed as first argument to instance methods. "->" means go to the address stored in this memory and offset by certain value. "." means the instance is found and just offset. this->var is equivalent as (\*this).var
+
+### Class and struct difference
+The only difference between a struct and class in C++ is the default accessibility of member variables and methods. In a struct they are public; in a class they are private.
+
+## Constructor
+![Screen Shot 2021-11-09 at 3.04.26 PM.png](https://boostnote.io/api/teams/wE89btYff/files/c0d55581159ffe1e6ef07666aa283c2fa63bfa50ee23216eb849cae01744c26d-Screen%20Shot%202021-11-09%20at%203.04.26%20PM.png)
+
+### Assembly
+```cpp
+struct Person
+{
+    int age; int id; int height;
+    Person() { this->age = 10; }
+};
+
+Person globalInstance;
+
+int main(int argc, char const *argv[])
+{
+    globalInstance.id = 10;
+
+    Person *cInstance = (Person *)malloc(sizeof(Person));
+    cInstance->age = 9;
+
+    Person *cppInstance = new Person();
+    cppInstance->age = 20;
+    return 0;
+}
+```
+```c
+___cxx_global_var_init:                 ## @__cxx_global_var_init
+	leaq	_globalInstance(%rip), %rdi
+	callq	__ZN6PersonC1Ev
+
+__ZN6PersonC1Ev:                        ## @_ZN6PersonC1Ev
+	movq	%rdi, -8(%rbp)
+	movq	-8(%rbp), %rdi
+	callq	__ZN6PersonC2Ev
+  
+__ZN6PersonC2Ev:
+    movq %rdi, -8(%rbp)
+    movq -8(%rbp), rax
+    movl $10, (%rax)
+    
+_main:                                  ## @main
+	movl	$10, _globalInstance+4(%rip)
+
+	movl	$12, %edi			## sizeof()
+	movq	%rdi, -72(%rbp)     ## storing size
+	callq	_malloc
+
+	movq	-72(%rbp), %rdi     ## reloading size
+	movq	%rax, -24(%rbp)		## cInstance at rbp-24
+
+	movq	-24(%rbp), %rax		## these two instructions are for ->
+	movl	$9, (%rax)			## 
+	callq	__Znwm				## new
+	movq	%rax, %rdi			## new returns address of allocated memory
+	movq	%rdi, %rcx			## use this address as "this" parameter
+	movq	%rcx, -64(%rbp)                 ## 8-byte Spill
+	movq	%rdi, %rcx
+	movq	%rcx, -56(%rbp)                 ## 8-byte Spill
+Ltmp0:
+	callq	__ZN6PersonC1Ev
+	movq	-56(%rbp), %rcx                 ## 8-byte Reload
+	movq	%rcx, -32(%rbp)
+	movq	-32(%rbp), %rcx
+	movl	$20, (%rcx)
+	retq
+
+```
+[Wrong]Only new and delete will call constructor and destructor.->Person person will also call constructor
+### Nature of Constructing Instance
+```c
+struct Person
+{
+    int age;
+    int height;
+    int id;
+};
+
+struct Person2
+{
+    int age = 9; // this creates a default constructor with 0 arg
+    int height;
+    int id;
+};
+int main(int argc, char const *argv[])
+{
+    Person person1;            // this basically does nothing
+    Person pc = person1;       // this copies memory belonging to person1 to another memory location
+    Person person2();          // this is a function declaration
+    Person *p1 = new Person;   // this calls new
+    Person *p2 = new Person(); // this calls new and memset to 0
+
+    Person2 person21;             // this calls contructor
+    Person2 *p21 = new Person2;   // this calls new and contructor
+    Person2 *p22 = new Person2(); // this calls new, memset to 0 and contructor
+    return 0;
+}
+```
+
+:::note
+Note that something like `Person p;` or `int a` aren't reflected directly in assembly. This just creates metadata (type, address) about a variable for compiler. When other code refers to it, compiler knows if it's legal and how to evaluate its content with this metadata.
+:::
+
+Class packages convenient operations around a specified chuck of data. The compiler first needs to know its size so appropriate space is allocated for this chuck of data. Usually you want some predefined value for this data when declaring it, so a constructor is used. Like any member function, a constructor takes in an address as the first argument. It returns nothing. So the workflow for instantiating an object by the compiler is to first allocate space then give the address of this space to a constructor function. Normally, a constructor changes only data within the chuck specified by class. Since constructor is very common, there're many syntactic sugar for it, especially when instantiating an object. It's also possible to have no constructor since it's just a function.
+
+### Default Constructor
+A default constructor is provided by the compiler when something needs to be filled into object at instantiation, namely when:
+1. member variable has initial value
+2. class has virtual function
+3. parent is virtual
+4. class virtually inherits another class 
+5. parent has constructor
+
+### Initialization List
+```c
+Person(int age, int height): m_age(age), m_height(height) {}
+```
+
+This is pure syntax sugar. Note that 1) you can put anything in the parenthesis. 2) evaluation order is variable declaration order in the class. 
+
+### Delegating Constructor (C11)
+```c
+Person(): Person(10, 20) {}
+Person(int age, int height): m_age(age), m_height(height) {}
+```
+
+:::note
+Though delegating constructor is not available before c11, constructor inheritance is always available 
+:::
+
+### Constructor Inheritance
+```c
+struct Person
+{
+    int age;
+    int height;
+    Person(): Person(10, 20) {}
+    Person(int age, int height) : age(age), height(height) {}
+};
+
+struct NormalPerson : Person
+{
+    int id;
+    NormalPerson(int id) : Person(0, 0), id(id) {}
+};
+```
+
+### Copy Constructor
+```c
+struct Person
+{
+    int age;
+    int height;
+
+    Person() : Person(0, 0) { cout << "person init" << endl; }
+    Person(int age, int height) : age(age), height(height) { cout << "person init" << endl; }
+    Person(const Person &person) : age(person.age), height(person.height) { cout << "person copy" << endl; }
+};
+
+struct NormalPerson : Person
+{
+    NormalPerson() : Person(0, 0) { cout << "normal person init" << endl; }
+    NormalPerson(const NormalPerson &normalPerson) : Person(normalPerson) { cout << "normal person copy" << endl; }
+};
+
+int main(int argc, char const *argv[])
+{
+    NormalPerson p1; // person init, normal person init
+    NormalPerson p2(p1); // person copy, normal person copy
+    NormalPerson p3; // person init, normal person init
+    p3 = p2; // this will use default copy mechanism (shallow, non constructor)
+    NormalPerson p4 = p2; // person copy, normal person copy
+
+    return 0;
+}
+```
+```c
+leaq -24(%rbp), %rdi // this p1
+callq __ZN12NormalPersonC1Ev 
+leaq -32(%rbp), %rdi // this p2
+leaq -24(%rbp), %rsi // p1
+callq __ZN12NormalPersonC1ERKS_ 
+leaq -40(%rbp), %rdi // this p3
+callq __ZN12NormalPersonC1Ev 
+movq -32(%rbp), %rax // default copy p2
+movq %rax, -40(%rbp) // default copy to p3
+leaq -48(%rbp), %rdi // this p4
+leaq -32(%rbp), %rsi // p2
+callq __ZN12NormalPersonC1ERKS_ 
+```
+:::note
+Use deep copy when content in pointer needs to be copied. Use copy constructor when you need deep copy. Allocate memory on heap and make memory copy of pointers in the given instance.
+:::
+
+:::tip
+The default copy mechanism seen here is also used by value passing seen in function parameter, (e.g. `Person magic(Person p) {}` where Person doesn't have custom copy constructor) whereby the input is passed as discrete values using argument registers or stack (rsp addressing) while the returned Person is the address of the first element of new pereson. 
+:::
+
+## Function and Object
+### Object as Function Parameter/Return
+```c
+int sum3(int a, int b, int c) {}
+struct ABC
+{
+    int a, b, c, d, e;
+    ABC(int a, int b, int c, int d, int e) : a(a), b(b), c(c), d(d), e(e) {}
+    ABC(const ABC &abc) : a(abc.a), b(abc.b), c(abc.c), d(abc.d), e(abc.e) {}
+};
+ABC magic(int a, ABC abc)
+{
+    ABC newABC(abc.a + a, abc.b + a, abc.c + a, abc.d + a, abc.e + a);
+    return newABC;
+}
+int main(int argc, char const *argv[])
+{
+    ABC abc(2, 4, 6, 8, 10);
+    ABC newABC = magic(1, abc);
+    sum3(newABC.a, newABC.c, newABC.e);
+    return 0;
+}
+```
+```c
+_main:                          
+	leaq	-40(%rbp), %rdi     ## -40 is now "this" for ABC constructor
+	movl	$2, %esi			## normal argument feeding
+	movl	$4, %edx
+.....
+    callq	__ZN3ABCC1Eiiiii	## ABC constructor 
+	leaq	-88(%rbp), %rdi		## -88 is now "this" for ABC copy constructor
+	leaq	-40(%rbp), %rsi		## -40 is the const ABC & argument to be copied
+	callq	__ZN3ABCC1ERKS_		## this copy constructor will copy from -40 to -88
+	leaq	-64(%rbp), %rdi		## -64 is used for returned object
+	movl	$1, %esi			## int a
+	leaq	-88(%rbp), %rdx		## ABC abc
+	callq	__Z5magici3ABC		## -64 will now store newABC object
+	movl	-64(%rbp), %edi
+	movl	-56(%rbp), %esi
+	movl	-48(%rbp), %edx
+	callq	__Z4sum3iii
+	retq
+
+__Z5magici3ABC:                         ## @_Z5magici3ABC
+	movq	%rdx, %rax			## ABC abc address in rdx and rax
+	movq	%rdi, %rcx			## return address in rdi and rcx
+	movq	%rcx, -24(%rbp)     ## -24 stores return address
+	movq	%rdi, %rcx			## 
+	movq	%rcx, -8(%rbp)		## -8 stores return address
+	movl	%esi, -12(%rbp)		## -12 stores int a = 1
+	movl	(%rax), %esi		## first element of abc to esi (second argument)
+	addl	-12(%rbp), %esi		## add a = 1 to abc.a, save to esi
+	movl	4(%rax), %edx
+	addl	-12(%rbp), %edx
+	movl	8(%rax), %ecx
+	addl	-12(%rbp), %ecx
+.....
+    callq	__ZN3ABCC1Eiiiii	## ABC constructor
+	movq	-24(%rbp), %rax     ## return address to rax
+	retq
+
+__ZN3ABCC1Eiiiii:                       ## @_ZN3ABCC1Eiiiii
+	movq	%rdi, -8(%rbp)
+	movl	%esi, -12(%rbp)
+.....
+	movq	-8(%rbp), %rdi
+	movl	-12(%rbp), %esi
+.....
+	callq	__ZN3ABCC2Eiiiii
+	retq
+
+__ZN3ABCC2Eiiiii:                       ## @_ZN3ABCC2Eiiiii
+	movq	%rdi, -8(%rbp)
+	movl	%esi, -12(%rbp)
+.....
+	movq	-8(%rbp), %rax
+	movl	-12(%rbp), %ecx
+	movl	%ecx, (%rax)
+	movl	-16(%rbp), %ecx
+	movl	%ecx, 4(%rax)
+.....
+  retq
+
+__ZN3ABCC1ERKS_:                        ## @_ZN3ABCC1ERKS_
+	movq	%rdi, -8(%rbp)		## function callee saving convention
+	movq	%rsi, -16(%rbp)
+	movq	-8(%rbp), %rdi
+	movq	-16(%rbp), %rsi
+	callq	__ZN3ABCC2ERKS_
+	retq
+
+__ZN3ABCC2ERKS_:                        ## @_ZN3ABCC2ERKS_
+	movq	%rdi, -8(%rbp)		## function callee saving convention
+	movq	%rsi, -16(%rbp)
+	movq	-8(%rbp), %rax		## rax stores "this" address
+	movq	-16(%rbp), %rcx		## rcx stores address of object to be copied
+	movl	(%rcx), %ecx		## first element of rcx
+	movl	%ecx, (%rax)		## copy it to first element of rax
+	movq	-16(%rbp), %rcx
+	movl	4(%rcx), %ecx
+	movl	%ecx, 4(%rax)
+	movq	-16(%rbp), %rcx
+	movl	8(%rcx), %ecx
+	movl	%ecx, 8(%rax)
+.....
+    retq
+```
+- When passing an object as parameter, either default register based copying mechanism or copy constructor is used.
+- When returning an object, the caller to this function will prepare some memory on stack for the returned object and pass the address of the first element as the first parameter. 
+- Now the returned object must be either created or copied inside the function.
+- If the returned object is created inside the function, the return address is automatically used as first argument (this) to object constructor.
+- If the returned object is copied, the return address is used as first argument (this) of copy constructor.
+- This way, no temp object is needed since the output object is not really returned or copied from an intermediate object, but filled directly by the function with a predefined address.
+
+### Implicit Construction of Object
+```c
+int sum3(int a, int b, int c) {}
+struct A
+{
+    int a;
+    A(int a) : a(a) {}
+};
+
+A magicA(A a)
+{
+    return a.a + 1;
+}
+int main(int argc, char const *argv[])
+{
+    A a1 = 8;
+    A newA = magicA(9);
+    sum3(1, 2, newA.a);
+    return 0;
+}
+```
+- Implicit construction relies on a constructor that takes exactly one argument. 
+- You can prevent this by adding `explicit` before constructor.
+## Member Type
+### Static Class Member & Method
+- static member variables are stored in global data section. 
+- static member variables have to be initialized.
+- static member functions obviously don't have "this" thus can't manipulate non static member variables.
+- static member functions can't be virtual, constructor, or destructor
+
+### Const
+- const member variables have to be initialized either at the declaration or inside the class.
+- const member functions can only manipulate const member vars or static vars.
+- const members are still instance members.
+
+```c
+class Person
+{
+public:
+    const int id = 1; // instance member
+    const char *name = "ddsds"; // instance member
+    static const int age; // TEXT,const
+    static const char *const staticStr; // DATA,const
+    static int count; // DATA,data
+};
+
+const int Person::age = 10;
+const char *const Person::staticStr = "sdds";
+int Person::count = 9;
+
+const char *str = "ddsds";
+
+int main(int argc, char const *argv[])
+{
+    Person *p = new Person;
+    printf("%s", p->name);
+    printf("%d", p->id);
+    printf("%d", p->age);
+    printf("%d", p->staticStr);
+    printf("%d", p->count);
+    printf("%s", str);
+    return 0;
+}
+```
+
+```c
+_main:                                  ## @main
+	callq	__Znwm
+	callq	__ZN6PersonC1Ev
+	movq	%rax, %rdi
+	movq	-32(%rbp), %rax      // person pointer in rax
+	movq	8(%rax), %rsi        // name
+	callq	_printf
+	movl	(%rax), %esi		 // id
+	callq	_printf
+	movl	$10, %esi			 // static const int age
+	callq	_printf
+	leaq	L_.str(%rip), %rsi   // static const char *const staticStr
+	callq	_printf
+	movl	__ZN6Person5countE(%rip), %esi // static int count
+	callq	_printf
+	movq	_str(%rip), %rsi
+	callq	_printf
+	retq
+
+__ZN6PersonC2Ev:                        ## Person Constructor
+	movq	%rdi, -8(%rbp)
+	movq	-8(%rbp), %rax
+	movl	$1, (%rax)             // const int id = 1
+	leaq	L_.str.1(%rip), %rcx   
+	movq	%rcx, 8(%rax)          // const char *name = "ddsds"; notice it's 8 byte aligned (also notice string literal optimization, stored once)
+	retq
+
+	.section	__TEXT,__const .globl	__ZN6Person3ageE      ## person.age
+__ZN6Person3ageE:
+	.long	10                              ## 0xa
+
+	.section	__TEXT,__cstring,cstring_literals
+L_.str:                                 ## @.str
+	.asciz	"sdds"
+
+	.section	__DATA,__const
+	.globl	__ZN6Person9staticStrE          ## static const char *const staticStr
+__ZN6Person9staticStrE:
+	.quad	L_.str
+
+	.section	__DATA,__data
+	.globl	__ZN6Person5countE              ## @static int count;
+__ZN6Person5countE:
+	.long	9                               ## 0x9
+
+	.section	__TEXT,__cstring,cstring_literals
+L_.str.1:                               ## @.str.1
+	.asciz	"ddsds"
+
+	.section	__DATA,__data
+	.globl	_str                            ## @str
+_str:
+	.quad	L_.str.1
+```
+
+### Reference Type Member Variable
+Has to be initialized inside class. Comes in handy as function parameter.
+
+## Inheritance
+### constructor Inheritance 
+1. By default, child constructor will call parent constructor without argument.
+2. If parent doesn't have any constructor, no parent constructor will be called.
+3. If parent has any constructor without having no argument constructor, error.
+4. Child can call any parent constructor explicitly in its initialization list
+5. You can't use constructor inside constructor body as always
+
+```cpp
+struct Person {
+  int m_age;
+  
+  Person(int age) {
+    this->m_age = age;
+  }
+  //or Person(int age): m_age(age) {}
+}
+
+struct Student : Person {
+  int m_id;
+  
+  Student(int id, int age): m_id(id), Person(age) {};
+}
+```
+
+### Method and Member Of the Same Name
+If both parent and child class have method or member with same names, we can use `childClass.ParentClass::m_var/m_func` to access any methods or variables. This is because we are guaranteed to have everything the parent method needs in the child object.
+
+## VMT
+### Structure
+```c
+struct Person3
+{
+    int age;
+    virtual void run() {};
+    virtual void die() {};
+};
+
+void magic(Person3 &p)
+{
+    p.run();
+    p.die();
+}
+```
+```c
+__Z5magicR7Person3:                     ## @_Z5magicR7Person3
+	movq	%rdi, -8(%rbp)
+	movq	-8(%rbp), %rdi
+	movq	(%rdi), %rax
+	callq	*(%rax)
+	movq	-8(%rbp), %rdi
+	movq	(%rdi), %rax
+	callq	*8(%rax)
+	retq
+
+__ZN7Person3C2Ev: ## Person3 constructor
+	movq	__ZTV7Person3@GOTPCREL(%rip), %rcx
+	addq	$16, %rcx
+	movq	%rdi, -8(%rbp)
+	movq	-8(%rbp), %rax
+	movq	%rcx, (%rax)
+	popq	%rbp
+	retq
+  
+	.section	__DATA,__const
+	.globl	__ZTV7Person3                
+__ZTV7Person3:
+	.quad	0
+	.quad	__ZTI7Person3
+	.quad	__ZN7Person33runEv
+    .quad	__ZN7Person33dieEv
+    
+	.section	__TEXT,__const
+	.globl	__ZTS7Person3                   ## @_ZTS7Person3
+__ZTS7Person3:
+	.asciz	"7Person3"
+
+	.section	__DATA,__const
+	.globl	__ZTI7Person3                   ## @_ZTI7Person3
+__ZTI7Person3:
+	.quad	__ZTVN10__cxxabiv117__class_type_infoE+16
+	.quad	__ZTS7Person3  
+```
+
+![Screen Shot 2021-08-24 at 11.13.40 PM.png](https://boostnote.io/api/teams/wE89btYff/files/2222eaedff2dcc1b12c8b71da4d6f54255a5be351390b3e76c6631ef1aff7dfc-Screen%20Shot%202021-08-24%20at%2011.13.40%20PM.png)
+![Screen Shot 2021-08-24 at 11.18.26 PM.png](https://boostnote.io/api/teams/wE89btYff/files/78ae8e0b28f1d90f8037f73ba7d780c065736477333f50d5854ea6c48d0115ec-Screen%20Shot%202021-08-24%20at%2011.18.26%20PM.png)
+
+:::important
+Objects in memory (heap, stack, or global) only store instance variables if no virtual method is declared. If there exists any virtual method (in method chain), at the start of object memory there will be a pointer to the virtual methods table. There is one vmt for each  parent class with virtual methods. You are guaranteed to find the  implementation of a method by using fixed offset. This is true because you can only declare child instance with parent class and not the reverse. This means this instance is guaranteed to have the parent method table at the bottom of its own VMT.
+
+TL;DR: At compile time, method call uses the first 8 bytes as the VMT address and find the method with the same offset as the declaring class's VMT. At run-time, whenever an object is created, it either link to an existing VMT or create a new one depending on its declaring class and its real class. One class corresponds to one VMT. 
+:::
+
+### Rules
+1. Without virtual method calling is just normal c function calling
+2. Virtual methods in child class are automatically virtual (can omit virtual keyword)
+3. Use virtual destructor for polymorphism 
+4. Polymorphism is used mainly for interface and function calling with similar effects. 
+
+```cpp
+struct Person {
+    int age;
+    int height;
+
+    virtual void run() {
+        cout << "person run" << endl;
+    }
+};
+
+struct Worker {
+    int salary;
+
+    virtual void work() {
+        cout << "worker work" << endl;
+    }
+};
+
+struct Student : Person, Worker {
+    int id;
+
+    void run() {
+        cout << "student run" << endl;
+    }
+    void work() {
+        cout << "student work" << endl;
+    }
+};
+
+int main(int argc, char const *argv[])
+{
+    Person *p = new Person;
+    Person *s = new Student;
+    Student *ss = new Student;
+    Worker *w = new Student;
+
+    p->run();
+    s->run();
+    ss->work();
+    w->work();
+  
+    long *lp = (long *)(p);
+    long *ls = (long *)(s);
+    long *lss = (long *)(ss);
+    long *lw = (long *)(w);
+
+    cout << *lp << endl
+         << *ls << endl
+         << *lss << endl
+         << *lw << endl
+         << w << endl
+         << &w->salary << endl;
+}
+//output:
+person run
+student run
+student work
+student work
+4507684936
+4507684976
+4507684976
+4507685008
+0x7fd4d1c05d40
+0x7fd4d1c05d48
+```
+VMT for person only has run method. VMT for student has both run and work method and run is first method. Worker has only work method in VMT. VMT for student declared using parent class will use the same VMT as student for the first declared parent (Person in this case). Others will use different VMT with their overriden parent method at the front. This way, the compiler just have to find the offset for VMT. 
+
+## Inheritance With Virtual 
+### Abstract Class
+Any class containing pure virtual method is abstract, including unimplemented pure virtual method from ancestors. Abstract class cannot declare instances.
+
+```c
+struct Animal {
+  virtual void run() = 0;
+}
+```
+
+### Multiple Inheritance
+
+
+### Virtual Inheritance
+Virtual inheritance is like virtual method in that it creates a virtual table, but for member variables, not functions. This way it can avoid duplicates of shared ancestor class as seen in deadly diamond problem.
+
+![Screen Shot 2022-05-13 at 6.54.32 PM.png](https://boostnote.io/api/teams/wE89btYff/files/c7ba2f628ac543cc62777fb537ce6f3cfc8b6ddd0d7610ef425e37c74753a964-Screen%20Shot%202022-05-13%20at%206.54.32%20PM.png)
+
+## Other Features
+### Friend 
+- friend non-member function
+- friend class
+
+### Class inside Class
+- private:
+- protected:
+- public:
