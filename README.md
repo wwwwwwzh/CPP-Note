@@ -575,9 +575,8 @@ int main(int argc, char const *argv[])
 - new \ delete
 - new [] \ delete []
 
-:::note
-new will allocate on heap and return a pointer while `Class class` will allocate on stack. Both will call init method.
-:::
+> **Note**
+> new will allocate on heap and return a pointer while `Class class` will allocate on stack. Both will call init method.
 
 ### Array Initialization
 ![Screen Shot 2021-11-09 at 3.00.17 PM.png](https://boostnote.io/api/teams/wE89btYff/files/96bb9c87595545258dc20b51f074ebf05d4dc8208858347fefeef29ac72fbf70-Screen%20Shot%202021-11-09%20at%203.00.17%20PM.png)
@@ -715,9 +714,8 @@ int main(int argc, char const *argv[])
 }
 ```
 
-:::note
-Note that something like `Person p;` or `int a` aren't reflected directly in assembly. This just creates metadata (type, address) about a variable for compiler. When other code refers to it, compiler knows if it's legal and how to evaluate its content with this metadata.
-:::
+> **Note**
+> Note that something like `Person p;` or `int a` aren't reflected directly in assembly. This just creates metadata (type, address) about a variable for compiler. When other code refers to it, compiler knows if it's legal and how to evaluate its content with this metadata.
 
 Class packages convenient operations around a specified chuck of data. The compiler first needs to know its size so appropriate space is allocated for this chuck of data. Usually you want some predefined value for this data when declaring it, so a constructor is used. Like any member function, a constructor takes in an address as the first argument. It returns nothing. So the workflow for instantiating an object by the compiler is to first allocate space then give the address of this space to a constructor function. Normally, a constructor changes only data within the chuck specified by class. Since constructor is very common, there're many syntactic sugar for it, especially when instantiating an object. It's also possible to have no constructor since it's just a function.
 
@@ -806,13 +804,11 @@ leaq -48(%rbp), %rdi // this p4
 leaq -32(%rbp), %rsi // p2
 callq __ZN12NormalPersonC1ERKS_ 
 ```
-:::note
-Use deep copy when content in pointer needs to be copied. Use copy constructor when you need deep copy. Allocate memory on heap and make memory copy of pointers in the given instance.
-:::
+> **Note**
+> Use deep copy when content in pointer needs to be copied. Use copy constructor when you need deep copy. Allocate memory on heap and make memory copy of pointers in the given instance.
 
-:::tip
-The default copy mechanism seen here is also used by value passing seen in function parameter, (e.g. `Person magic(Person p) {}` where Person doesn't have custom copy constructor) whereby the input is passed as discrete values using argument registers or stack (rsp addressing) while the returned Person is the address of the first element of new pereson. 
-:::
+> **Note**
+> The default copy mechanism seen here is also used by value passing seen in function parameter, (e.g. `Person magic(Person p) {}` where Person doesn't have custom copy constructor) whereby the input is passed as discrete values using argument registers or stack (rsp addressing) while the returned Person is the address of the first element of new pereson. 
 
 ## Function and Object
 ### Object as Function Parameter/Return
@@ -1139,11 +1135,9 @@ __ZTI7Person3:
 ![Screen Shot 2021-08-24 at 11.13.40 PM.png](https://boostnote.io/api/teams/wE89btYff/files/2222eaedff2dcc1b12c8b71da4d6f54255a5be351390b3e76c6631ef1aff7dfc-Screen%20Shot%202021-08-24%20at%2011.13.40%20PM.png)
 ![Screen Shot 2021-08-24 at 11.18.26 PM.png](https://boostnote.io/api/teams/wE89btYff/files/78ae8e0b28f1d90f8037f73ba7d780c065736477333f50d5854ea6c48d0115ec-Screen%20Shot%202021-08-24%20at%2011.18.26%20PM.png)
 
-:::important
-Objects in memory (heap, stack, or global) only store instance variables if no virtual method is declared. If there exists any virtual method (in method chain), at the start of object memory there will be a pointer to the virtual methods table. There is one vmt for each  parent class with virtual methods. You are guaranteed to find the  implementation of a method by using fixed offset. This is true because you can only declare child instance with parent class and not the reverse. This means this instance is guaranteed to have the parent method table at the bottom of its own VMT.
-
-TL;DR: At compile time, method call uses the first 8 bytes as the VMT address and find the method with the same offset as the declaring class's VMT. At run-time, whenever an object is created, it either link to an existing VMT or create a new one depending on its declaring class and its real class. One class corresponds to one VMT. 
-:::
+> **Important**
+> Objects in memory (heap, stack, or global) only store instance variables if no virtual method is declared. If there exists any virtual method (in method chain), at the start of object memory there will be a pointer to the virtual methods table. There is one vmt for each  parent class with virtual methods. You are guaranteed to find the  implementation of a method by using fixed offset. This is true because you can only declare child instance with parent class and not the reverse. This means this instance is guaranteed to have the parent method table at the bottom of its own VMT.
+> TL;DR: At compile time, method call uses the first 8 bytes as the VMT address and find the method with the same offset as the declaring class's VMT. At run-time, whenever an object is created, it either link to an existing VMT or create a new one depending on its declaring class and its real class. One class corresponds to one VMT. 
 
 ### Rules
 1. Without virtual method calling is just normal c function calling
@@ -1245,3 +1239,249 @@ Virtual inheritance is like virtual method in that it creates a virtual table, b
 - private:
 - protected:
 - public:
+
+[[toc]]
+
+## Operator Overload
+### List of Overloadable Operators 
+- +、-、+=、==、!=、-、++、--、<<、>>
+### Optimization
+```c
+struct Person
+{
+    int age; int height; int id;
+
+    Person(int age, int height, int id) : age(age), height(height), id(id) {}
+    Person(const Person &p) : age(p.age + 1), height(p.height + 1), id(p.id + 1) {}
+};
+
+Person operator+(const Person &p1, const Person &p2)
+{
+    return Person(p1.age + p2.age, p1.height + p2.height, p1.id + p2.id);
+}
+
+int main(int argc, char const *argv[])
+{
+    Person p1 = Person(1, 2, 3);
+    Person p2 = Person(2, 4, 6);
+    Person p3 = p1 + p2;
+    printf("%d", p3.id);
+    return 0;
+}
+
+// copy constructor 186
+// nothing 167
+// reference 143
+// both 134 this is because copy constructor makes return 
+// easier without really writing copy constructor
+```
+### const
+Depending on if the return value of an operator should be changed and if the operator changes operands, const should be added to return value, function, and input accordingly.
+
+```c
+Person &operator++()
+{
+    age+=1; height+=1; id+=1;
+    return (*this);
+}
+
+const Person operator++(int)
+{
+    Person old = Person(*this);
+    age+=1; height+=1; id+=1;
+    return old;
+}
+
+const Person operator-() const
+{
+  return Person(-age, -height, -id);
+}
+```
+
+## Template
+### Basic
+```c
+template <typename T>
+T add(T a, T b)
+{
+    return a + b;
+}
+
+int main(int argc, char const *argv[])
+{
+    add(1, 2);
+    add<double>(1.1, 2.2);
+    add<Person>(Person(1, 2, 4), Person(1, 2, 4));
+    return 0;
+}
+```
+```c
+__Z3addIiET_S0_S0_ ## int add<int>(int, int)
+__Z3addIdET_S0_S0_ ## double add<double>(double, double)
+__Z3addI6PersonET_S1_S1_ ## Person add<Person>(Person, Person)
+```
+Basically, template is a syntax sugar to help programmers generate multiple functions with similar implementation by writing only one "template" function.
+
+### Why Template Can't be Implemented in Other Files
+Basics of compiling and linking:
+A cpp file can be seen as comprising of either functions or codes/implementations. Codes are translated to assembly which can be executed once assembled. Functions are `call` instructions. One file need only guarantee that its codes are correct and functions exists. The implementation of functions is guaranteed by other files. The process of combining all these files and determining which address to call exactly is done in linking (resolving symbols). If the above protocol is violated by any file, linker will fail.
+
+When putting template function in another file, compiler has no idea what assembly to generate thus it won't generate anything for a template. So the solution is to always put together a template and code using the template by including a header/cpp file containing the implementation of template in files using the template. The convention is to call it a "hpp" (header & cpp) file. Remember to use `#progma once`. 
+
+
+## C11 Features
+### auto
+Basically a var in swift or java.
+
+### nullptr
+Definition of NULL (it's basically just 0):
+```
+#ifdef __cplusplus
+#  if !defined(__MINGW32__) && !defined(_MSC_VER)
+#    define NULL __null
+#  else
+#    define NULL 0
+#  endif
+#else
+#  define NULL ((void*)0)
+#endif
+```
+This is ambiguous when using NULL as a parameter to functions that accepts an integer and pointer.
+
+Functions called when declaring `int *p = nullptr;`:
+```
+c++filt __ZNSt3__1L15__get_nullptr_tEv
+std::__1::__get_nullptr_t()
+c++filt __ZNKSt3__19nullptr_tcvPT_IiEEv
+std::__1::nullptr_t::operator int*<int>() const
+```
+nullptr resolves ambiguity of NULL since NULL is literally just 0.
+
+### Lambda
+```c
+int exec(int a, int b, int (*func)(int, int))
+{
+    return func(a, b);
+}
+
+int add(int a, int b)
+{
+    return a + b;
+}
+
+int main(int argc, char const *argv[])
+{
+    int x = 10;
+    int y = 20;
+    auto p = [x, &y](int a, int b) -> int
+    {
+        return a + b + x + ++y;
+    };
+
+    exec(1, 2, add);
+    exec(4, 3, ([](int a, int b) -> int
+                { return a + b; }));
+    printf("%d", p(1, 2) + p(3, 4) + ([y](int a, int b) mutable -> int
+                                      { return a + b + ++y; })(3, 4));
+    return 0;
+}
+
+```
+```c
+__Z4execiiPFiiiE:                       ## @_Z4execiiPFiiiE
+.....
+	callq	*%rdx
+
+__Z3addii:                              ## @_Z3addii
+
+_main:                                  ## @main
+	movl	$10, -20(%rbp)				## -20 stores 10;  int x = 10;
+	movl	$20, -24(%rbp)				## -24 stores 20;  int y = 20;
+	movl	-20(%rbp), %eax				
+	movl	%eax, -40(%rbp)				## -40 stores 10;  capturing x
+	leaq	-24(%rbp), %rax				
+	movq	%rax, -32(%rbp)				## -32 stores address of -24(%rbp); capturing &y
+	movl	$1, %edi
+	movl	$2, %esi
+	leaq	__Z3addii(%rip), %rdx
+	callq	__Z4execiiPFiiiE			## exec(1, 2, add);
+	leaq	-48(%rbp), %rdi
+	callq	__ZZ4mainENK3$_0cvPFiiiEEv	## get address of ([](int a, int b) -> int { return a + b; })
+	movq	%rax, %rdx					## put address in 3rd argument
+	movl	$4, %edi
+	movl	$3, %esi
+	callq	__Z4execiiPFiiiE			## exec(4, 3, ([](int a, int b) -> int { return a + b; }));
+	leaq	-40(%rbp), %rdi				## %rdi stores address of -40(%rbp) which stores first of captured argument for p
+	movl	$1, %esi
+	movl	$2, %edx
+	callq	__ZZ4mainENK3$_1clEii		## p(1, 2)
+	movl	%eax, -64(%rbp)             ## stores result in -64
+	leaq	-40(%rbp), %rdi
+	movl	$3, %esi
+	movl	$4, %edx
+	callq	__ZZ4mainENK3$_1clEii		## p(3, 4)
+	movl	%eax, %ecx					## stores result in %ecx	
+	movl	-64(%rbp), %eax             ## move result of p(1, 2) back to %eax
+	addl	%ecx, %eax					## add p(1, 2) and p(3, 4)
+	movl	%eax, -60(%rbp)             ## store result in -60
+	movl	-24(%rbp), %eax				## copy y to %eax
+	movl	%eax, -56(%rbp)				## create new variable with value of y; mutable
+	leaq	-56(%rbp), %rdi				## move address of this new variable to first argument of lambda
+	movl	$3, %esi					
+	movl	$4, %edx
+	callq	__ZZ4mainEN3$_2clEii		## ([y](int a, int b) mutable -> int { return a + b + ++y; })(3, 4)
+	movl	-60(%rbp), %esi                 ## 4-byte Reload
+	addl	%eax, %esi					## add result of __ZZ4mainEN3$_2clEii to previous sum
+	leaq	L_.str(%rip), %rdi
+	movb	$0, %al
+	callq	_printf
+
+__ZZ4mainENK3$_1clEii:                  ## @"_ZZ4mainENK3$_1clEii"
+	movq	%rdi, -8(%rbp)				## %rdi is address of captured argument
+	movl	%esi, -12(%rbp)				## first argument
+	movl	%edx, -16(%rbp)				## second argument
+	movq	-8(%rbp), %rcx				## %rcx stores address of captured argument
+	movl	-12(%rbp), %eax				## %eax stores first argument
+	addl	-16(%rbp), %eax				## add first and second argument, stores in %eax
+	addl	(%rcx), %eax				## add first captured argument, stores in %eax
+	movq	8(%rcx), %rdx				## %rdx stores second captured argument which is a pointer to y
+	movl	(%rdx), %ecx				## %ecx stores value of y
+	addl	$1, %ecx					## %ecx+=1
+	movl	%ecx, (%rdx)				## store y + 1 back to *y. (%rdx) means memory addressed by %rdx
+	addl	%ecx, %eax					## add added y to %eax
+
+__ZZ4mainEN3$_2clEii:                   ## @"_ZZ4mainEN3$_2clEii"
+    movq	%rdi, -8(%rbp)				## -8 stores address of copied y 
+    movl	%esi, -12(%rbp)				## -12 stores first argument 
+    movl	%edx, -16(%rbp) 			## -16 stores second argument 
+    movq	-8(%rbp), %rdx 
+    movl	-12(%rbp), %eax 
+    addl	-16(%rbp), %eax 
+    movl	(%rdx), %ecx 
+    addl	$1, %ecx 
+    movl	%ecx, (%rdx) 
+    addl	%ecx, %eax 
+
+__ZZ4mainENK3$_0cvPFiiiEEv:             ## @"_ZZ4mainENK3$_0cvPFiiiEEv"
+	movq	%rdi, -8(%rbp)
+	leaq	__ZZ4mainEN3$_08__invokeEii(%rip), %rax
+
+__ZZ4mainEN3$_08__invokeEii:            ## @"_ZZ4mainEN3$_08__invokeEii"
+	movl	%edi, -4(%rbp)
+	movl	%esi, -8(%rbp)
+	movl	-4(%rbp), %esi
+	movl	-8(%rbp), %edx
+	callq	__ZZ4mainENK3$_0clEii
+
+__ZZ4mainENK3$_0clEii:                  ## @"_ZZ4mainENK3$_0clEii"
+	movq	%rdi, -8(%rbp)
+	movl	%esi, -12(%rbp)
+	movl	%edx, -16(%rbp)
+	movl	-12(%rbp), %eax
+	addl	-16(%rbp), %eax
+```
+- Lambda is just a function with auto generated name and different syntax.
+- Capture mechanism creates copies or pointers of surrounding element and stores these variables in a list. The address of first element of the list is provided as first argument to the lambda. Thus it's impossible to use lambda capturing elements as function argument (since that function has no idea how to provide the capture list).
+- [&] means capture all with reference. [=] means capture all by copy. 
+> **Note**
+> Lambda expression creates more waste code than normal function and inline function.
